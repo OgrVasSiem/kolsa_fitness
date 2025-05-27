@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">kolsaTest</string>
+
+    <string name="workout_type">Тип: %1$s</string>
+    <string name="workout_duration">Длительность: %1$s</string>
+    <string name="no_internet">Нет интернета</string>
+    <string name="loading">Загрузка...</string>
+    <string name="error_loading">Ошибка загрузки: %1$s</string>
+</resources>
