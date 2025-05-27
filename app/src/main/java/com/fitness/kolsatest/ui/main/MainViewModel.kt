@@ -33,6 +33,7 @@ class MainViewModel @Inject constructor(
             }
 
             _uiState.value = WorkoutUiState.Loading
+
             try {
                 val result = repository.getWorkouts()
                 _uiState.value = WorkoutUiState.Success(result)
