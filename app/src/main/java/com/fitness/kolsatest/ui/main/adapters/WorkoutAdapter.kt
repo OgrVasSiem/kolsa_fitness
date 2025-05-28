@@ -20,6 +20,7 @@ class WorkoutAdapter(
         private val durationText: TextView = view.findViewById(R.id.durationText)
         private val descriptionText: TextView = view.findViewById(R.id.descriptionText)
 
+        @SuppressLint("StringFormatMatches")
         fun bind(workout: Workout, onItemClick: (Workout) -> Unit) {
             val context = itemView.context
 
@@ -32,7 +33,7 @@ class WorkoutAdapter(
 
             titleText.text = workout.title
             typeText.text = context.getString(R.string.workout_type_format, typeName)
-            durationText.text = context.getString(R.string.workout_duration_format, workout.duration)
+            durationText.text = context.getString(R.string.workout_duration_format, workout.getDurationAsInt())
             descriptionText.text = workout.description
 
             itemView.setOnClickListener {

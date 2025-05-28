@@ -6,4 +6,8 @@ data class Workout(
     val description: String?,
     val type: Int,
     val duration: String
-)
+){
+    fun getDurationAsInt(): Int {
+        return duration.toIntOrNull() ?: 0
+    }
+}

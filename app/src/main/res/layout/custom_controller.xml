@@ -15,7 +15,8 @@
         android:layout_marginTop="@dimen/exo_styled_bottom_bar_margin_top"
         android:layout_gravity="bottom"
         android:background="@color/exo_bottom_bar_background"
-        android:layoutDirection="ltr">
+        android:layoutDirection="ltr"
+        tools:ignore="PrivateResource">
 
         <LinearLayout
             android:id="@id/exo_time"

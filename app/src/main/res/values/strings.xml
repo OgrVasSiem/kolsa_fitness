@@ -9,12 +9,19 @@
     <string name="workout_type_training">Тренировка</string>
     <string name="workout_type_stream">Эфир</string>
     <string name="workout_type_complex">Комплекс</string>
-    <string name="workout_type_unknown">Неизвестно</string>
+    <string name="workout_type_unknown">Без описания</string>
 
     <string name="workout_type_format">Тип: %1$s</string>
     <string name="workout_duration_format">Длительность: %1$s мин.</string>
     <string name="search">Поиск</string>
     <string name="filter">Фильтр</string>
+
+    <string name="video_quality">Выбор качества</string>
+    <string name="playback_speed">Скорость воспроизведения</string>
+    <string name="playback_speed_format">%1$.2fx</string>
+
+    <string name="error_workout_not_found">Тренировка с id=%1$d не найдена</string>
+    <string name="error_loading_with_message">Ошибка загрузки: %1$s</string>
 
 
     <string-array name="workout_type_filter">
@@ -23,6 +30,4 @@
         <item>Эфир</item>
         <item>Комплекс</item>
     </string-array>
-
-
 </resources>

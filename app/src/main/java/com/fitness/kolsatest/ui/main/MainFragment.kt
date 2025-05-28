@@ -24,7 +24,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class MainFragment : Fragment() {
+class MainFragment : Fragment(R.layout.fragment_main) {
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -37,36 +37,16 @@ class MainFragment : Fragment() {
     private var currentFilterType: Int = 0
     private var currentQuery: String = ""
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View = inflater.inflate(R.layout.fragment_main, container, false)
-
-    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         initViews(view)
-
-        view.setOnTouchListener { _, _ ->
-            if (searchField.isFocused) {
-                searchField.clearFocus()
-                val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.hideSoftInputFromWindow(searchField.windowToken, 0)
-            }
-            false
-        }
-
-        ViewCompat.setOnApplyWindowInsetsListener(view.findViewById(R.id.topAppBar)) { v, insets ->
-            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            v.updatePadding(top = statusBarHeight)
-            WindowInsetsCompat.CONSUMED
-        }
-
+        setupWindowInsets(view)
         setupRecyclerView()
         setupSearchField()
         setupFilterMenu(view)
         observeViewModel()
+        setupTouchToHideKeyboard(view)
     }
 
     private fun initViews(view: View) {
@@ -80,31 +60,22 @@ class MainFragment : Fragment() {
             val action = MainFragmentDirections.actionMainFragmentToDetailFragment(workout.id)
             findNavController().navigate(action)
         }
+
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = workoutAdapter
     }
 
-
     private fun setupSearchField() {
         val searchIcon = requireView().findViewById<ImageView>(R.id.searchIcon)
-        searchIcon.setOnClickListener {
-            val isNowVisible = !searchField.isVisible
-            searchField.visibility = if (isNowVisible) View.VISIBLE else View.GONE
 
-            if (isNowVisible) {
-                searchField.requestFocus()
-                val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showSoftInput(searchField, InputMethodManager.SHOW_IMPLICIT)
-            } else {
-                val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.hideSoftInputFromWindow(searchField.windowToken, 0)
-            }
+        searchIcon.setOnClickListener {
+            toggleSearchFieldVisibility()
         }
+
         searchField.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
+                hideKeyboard()
                 searchField.clearFocus()
-                val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.hideSoftInputFromWindow(searchField.windowToken, 0)
                 true
             } else {
                 false
@@ -121,9 +92,9 @@ class MainFragment : Fragment() {
         })
     }
 
-
     private fun setupFilterMenu(view: View) {
         val filterIcon = view.findViewById<ImageView>(R.id.filterIcon)
+
         filterIcon.setOnClickListener {
             val popup = PopupMenu(requireContext(), it)
             val filterOptions = resources.getStringArray(R.array.workout_type_filter)
@@ -144,7 +115,8 @@ class MainFragment : Fragment() {
 
     private fun filterWorkouts() {
         val filtered = allWorkouts.filter { workout ->
-            (currentFilterType == 0 || workout.type == currentFilterType) && workout.title.contains(currentQuery, ignoreCase = true)
+            (currentFilterType == 0 || workout.type == currentFilterType) &&
+                    workout.title.contains(currentQuery, ignoreCase = true)
         }
         workoutAdapter.updateData(filtered)
     }
@@ -178,11 +150,59 @@ class MainFragment : Fragment() {
 
     private fun showError(message: String) {
         progressBar.visibility = View.GONE
-        Toast.makeText(requireContext(), getString(R.string.error_loading, message), Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.error_loading, message),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun showNoInternet() {
         progressBar.visibility = View.GONE
-        Toast.makeText(requireContext(), getString(R.string.no_internet), Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.no_internet),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun toggleSearchFieldVisibility() {
+        val isNowVisible = !searchField.isVisible
+        searchField.visibility = if (isNowVisible) View.VISIBLE else View.GONE
+
+        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        if (isNowVisible) {
+            searchField.requestFocus()
+            imm.showSoftInput(searchField, InputMethodManager.SHOW_IMPLICIT)
+        } else {
+            searchField.clearFocus()
+            imm.hideSoftInputFromWindow(searchField.windowToken, 0)
+        }
+    }
+
+    private fun setupWindowInsets(view: View) {
+        val appBar = view.findViewById<View>(R.id.topAppBar)
+        ViewCompat.setOnApplyWindowInsetsListener(appBar) { v, insets ->
+            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            v.updatePadding(top = statusBarHeight)
+            WindowInsetsCompat.CONSUMED
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupTouchToHideKeyboard(view: View) {
+        view.setOnTouchListener { _, _ ->
+            if (searchField.isFocused) {
+                searchField.clearFocus()
+                hideKeyboard()
+            }
+            false
+        }
+    }
+
+    private fun hideKeyboard() {
+        val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(searchField.windowToken, 0)
     }
 }
+

@@ -1,10 +1,12 @@
 package com.fitness.kolsatest.ui.detail
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -20,6 +22,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.TrackSelectionDialogBuilder
 import com.fitness.kolsatest.R
+import com.fitness.kolsatest.data.models.Workout
 import com.fitness.kolsatest.ui.detail.readModels.DetailUiState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -35,6 +38,11 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
     private lateinit var trackSelector: DefaultTrackSelector
     private lateinit var progressBar: ProgressBar
 
+    private lateinit var titleTextView: TextView
+    private lateinit var typeTextView: TextView
+    private lateinit var descriptionTextView: TextView
+    private lateinit var durationTextView: TextView
+
     private lateinit var qualityButton: ImageButton
     private lateinit var speedButton: ImageButton
 
@@ -42,6 +50,18 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupViews(view)
+        observeViewModel()
+
+        val workoutId = DetailFragmentArgs.fromBundle(requireArguments()).workoutId
+        viewModel.loadWorkout(workoutId)
+    }
+
+    private fun setupViews(view: View) {
+        titleTextView = view.findViewById(R.id.titleTextView)
+        typeTextView = view.findViewById(R.id.typeTextView)
+        descriptionTextView = view.findViewById(R.id.descriptionTextView)
+        durationTextView = view.findViewById(R.id.durationTextView)
 
         playerView = view.findViewById(R.id.playerView)
         progressBar = view.findViewById(R.id.progressBar)
@@ -51,38 +71,56 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
         qualityButton.setOnClickListener { showTrackSelectionDialog() }
         speedButton.setOnClickListener { showSpeedDialog() }
+    }
 
-        val workoutId = DetailFragmentArgs.fromBundle(requireArguments()).workoutId
-        viewModel.loadWorkout(workoutId)
-
+    private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     when (state) {
-                        is DetailUiState.Loading ->
-                            progressBar.visibility = View.VISIBLE
-
-                        is DetailUiState.Success -> {
-                            progressBar.visibility = View.GONE
-                            initializePlayer(buildFullUrl(state.workoutVideoDto.link))
-                        }
-
-                        is DetailUiState.Error ->
-                            showError(state.message)
-
-                        is DetailUiState.NoInternet ->
-                            showNoInternet()
+                        is DetailUiState.Loading -> showLoading()
+                        is DetailUiState.Success -> showWorkoutDetails(state)
+                        is DetailUiState.Error -> showError(state.message)
+                        is DetailUiState.NoInternet -> showNoInternet()
                     }
                 }
             }
         }
     }
 
-    private fun buildFullUrl(path: String) =
-        if (path.startsWith("/")) "$baseUrl$path" else "$baseUrl/$path"
+    private fun showLoading() {
+        progressBar.visibility = View.VISIBLE
+    }
+
+    private fun showWorkoutDetails(state: DetailUiState.Success) {
+        progressBar.visibility = View.GONE
+        bindWorkoutInfo(state.workout)
+        initializePlayer(buildFullUrl(state.workoutVideoDto.link))
+    }
+
+    @SuppressLint("StringFormatMatches")
+    private fun bindWorkoutInfo(workout: Workout) {
+        titleTextView.text = workout.title
+
+        val typeName = when (workout.type) {
+            1 -> getString(R.string.workout_type_training)
+            2 -> getString(R.string.workout_type_stream)
+            3 -> getString(R.string.workout_type_complex)
+            else -> getString(R.string.workout_type_unknown)
+        }
+
+        typeTextView.text = getString(R.string.workout_type_format, typeName)
+        descriptionTextView.text = workout.description ?: getString(R.string.workout_type_unknown)
+        durationTextView.text = getString(R.string.workout_duration_format, workout.getDurationAsInt())
+    }
+
+    private fun buildFullUrl(path: String): String {
+        return if (path.startsWith("/")) "$baseUrl$path" else "$baseUrl/$path"
+    }
 
     private fun initializePlayer(videoUrl: String) {
         trackSelector = DefaultTrackSelector(requireContext())
+
         player = ExoPlayer.Builder(requireContext())
             .setTrackSelector(trackSelector)
             .build().also { exo ->
@@ -98,7 +136,7 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         player?.let { exo ->
             TrackSelectionDialogBuilder(
                 requireContext(),
-                "Выбор качества",
+                getString(R.string.video_quality),
                 exo,
                 C.TRACK_TYPE_VIDEO
             )
@@ -110,24 +148,27 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
 
     private fun showSpeedDialog() {
         val speeds = listOf(0.5f, 1f, 1.25f, 1.5f, 2f)
-        val labels = speeds.map { "${it}×" }.toTypedArray()
-        val current = player?.playbackParameters?.speed ?: 1f
-        val checked = speeds.indexOfFirst { it == current }.coerceAtLeast(0)
+        val labels = speeds.map {
+            getString(R.string.playback_speed_format, it)
+        }.toTypedArray()
+
+        val currentSpeed = player?.playbackParameters?.speed ?: 1f
+        val checkedIndex = speeds.indexOfFirst { it == currentSpeed }.coerceAtLeast(0)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Скорость воспроизведения")
-            .setSingleChoiceItems(labels, checked) { dlg, which ->
+            .setTitle(getString(R.string.playback_speed))
+            .setSingleChoiceItems(labels, checkedIndex) { dialog, which ->
                 player?.playbackParameters = PlaybackParameters(speeds[which])
-                dlg.dismiss()
+                dialog.dismiss()
             }
             .show()
     }
 
-    private fun showError(msg: String) {
+    private fun showError(message: String) {
         progressBar.visibility = View.GONE
         Toast.makeText(
             requireContext(),
-            getString(R.string.error_loading, msg),
+            getString(R.string.error_loading, message),
             Toast.LENGTH_SHORT
         ).show()
     }
@@ -152,5 +193,3 @@ class DetailFragment : Fragment(R.layout.fragment_detail) {
         player = null
     }
 }
-
-
